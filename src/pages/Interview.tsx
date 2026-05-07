@@ -759,9 +759,24 @@ useEffect(() => {
       discardRecordingRef.current = false;
       visibilityLostRef.current = false;
 
-      const mediaRecorder = new MediaRecorder(audioOnlyStream, {
-        mimeType: MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : undefined,
-      });
+      const getSupportedMimeType = () => {
+  const types = [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/mp4",
+    "audio/ogg;codecs=opus",
+  ];
+
+  return types.find((type) => MediaRecorder.isTypeSupported(type)) || "";
+};
+
+const mimeType = getSupportedMimeType();
+
+const mediaRecorder = mimeType
+  ? new MediaRecorder(audioOnlyStream, { mimeType })
+  : new MediaRecorder(audioOnlyStream);
+
+console.log("Laptop recording mimeType:", mediaRecorder.mimeType);
 
       mediaRecorderRef.current = mediaRecorder;
 
@@ -799,7 +814,9 @@ useEffect(() => {
             return;
           }
 
-          const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+             const audioBlob = new Blob(audioChunksRef.current, {
+            type: mediaRecorderRef.current?.mimeType || "audio/webm",
+          });
 
           if (audioBlob.size < 1000) {
             setErrorMessage("Voice not captured. Please speak clearly.");
