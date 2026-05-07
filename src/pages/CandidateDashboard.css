@@ -1,0 +1,591 @@
+/* CandidateDashboard.css */
+
+.candidate-dashboard {
+  min-height: 100vh;
+  padding: 110px 0 40px;
+  transition: all 0.3s ease;
+}
+
+.candidate-dashboard.dark {
+  background:
+    radial-gradient(circle at top left, rgba(34, 197, 94, 0.12), transparent 32%),
+    #07111f;
+  color: #f8fafc;
+}
+
+.candidate-dashboard.light {
+  background:
+    radial-gradient(circle at top left, rgba(34, 197, 94, 0.12), transparent 32%),
+    #f4f7fb;
+  color: #0f172a;
+}
+
+.candidate-shell {
+  width: min(1180px, 92%);
+  margin: auto;
+}
+
+.candidate-hero,
+.candidate-card,
+.metric-card {
+  border-radius: 28px;
+  transition: all 0.3s ease;
+}
+
+.candidate-dashboard.dark .candidate-hero,
+.candidate-dashboard.dark .candidate-card,
+.candidate-dashboard.dark .metric-card {
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+}
+
+.candidate-dashboard.light .candidate-hero,
+.candidate-dashboard.light .candidate-card,
+.candidate-dashboard.light .metric-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
+}
+
+.candidate-hero {
+  padding: 42px;
+  margin-bottom: 22px;
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: center;
+}
+
+.candidate-eyebrow {
+  color: #22c55e;
+  font-size: 0.8rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.candidate-hero h1 {
+  margin: 0;
+  font-size: clamp(2.4rem, 5vw, 4.2rem);
+  line-height: 1;
+}
+
+.candidate-dashboard.dark h1,
+.candidate-dashboard.dark h2,
+.candidate-dashboard.dark h3,
+.candidate-dashboard.dark strong {
+  color: #ffffff;
+}
+
+.candidate-dashboard.light h1,
+.candidate-dashboard.light h2,
+.candidate-dashboard.light h3,
+.candidate-dashboard.light strong {
+  color: #0f172a;
+}
+
+.candidate-dashboard.dark p,
+.candidate-dashboard.dark span {
+  color: #94a3b8;
+}
+
+.candidate-dashboard.light p,
+.candidate-dashboard.light span {
+  color: #475569;
+}
+
+.primary-action {
+  border: none;
+  border-radius: 999px;
+  min-height: 48px;
+  padding: 0 24px;
+  font-weight: 900;
+  cursor: pointer;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: #03130a !important;
+  transition: 0.25s ease;
+}
+
+.primary-action:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 35px rgba(34, 197, 94, 0.24);
+}
+
+.primary-action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.start-interview-card {
+  padding: 30px;
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: center;
+}
+
+.start-left h2 {
+  margin: 0;
+}
+
+.start-left p {
+  margin-bottom: 0;
+  line-height: 1.6;
+}
+
+.start-interview-actions {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.skill-select {
+  min-width: 230px;
+  height: 48px;
+  border-radius: 14px;
+  padding: 0 14px;
+  border: 1px solid #cbd5e1;
+  outline: none;
+  font-weight: 700;
+}
+
+.candidate-dashboard.dark .skill-select {
+  background: #020617;
+  color: #f8fafc;
+  border-color: rgba(148, 163, 184, 0.28);
+}
+
+.candidate-dashboard.light .skill-select {
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.candidate-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 2.8fr;
+  gap: 22px;
+  margin-bottom: 24px;
+}
+
+.profile-card {
+  padding: 28px;
+}
+
+.profile-card h2 {
+  margin-top: 0;
+}
+
+.profile-card p {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+  margin: 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  line-height: 1.5;
+}
+
+.profile-card p span {
+  font-weight: 800;
+}
+
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+}
+
+.metric-card {
+  padding: 26px;
+  min-height: 140px;
+}
+
+.metric-card span {
+  display: block;
+  margin-bottom: 42px;
+  font-weight: 800;
+}
+
+.metric-card strong {
+  font-size: 2.8rem;
+  color: #22c55e !important;
+}
+
+.history-card {
+  padding: 30px;
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: center;
+  margin-bottom: 22px;
+}
+
+.section-head h2 {
+  margin: 0;
+  font-size: 1.8rem;
+}
+
+.section-head p {
+  margin: 6px 0 0;
+  line-height: 1.6;
+}
+
+.empty-state {
+  padding: 36px;
+  text-align: center;
+  border-radius: 20px;
+}
+
+.candidate-dashboard.dark .empty-state {
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.candidate-dashboard.light .empty-state {
+  background: #f8fafc;
+}
+
+/* ===== MODERN INTERVIEW HISTORY ===== */
+
+.history-list {
+  display: none;
+}
+
+.history-grid {
+  margin-top: 22px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 18px;
+}
+
+.history-modern-card {
+  position: relative;
+  padding: 24px;
+  border-radius: 30px;
+  overflow: hidden;
+  transition: 0.28s ease;
+  backdrop-filter: blur(18px);
+}
+
+.candidate-dashboard.dark .history-modern-card {
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.95), rgba(2, 6, 23, 0.95));
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+}
+
+.candidate-dashboard.light .history-modern-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+}
+
+.history-modern-card:hover {
+  transform: translateY(-4px);
+}
+
+.history-modern-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.history-modern-top h3 {
+  margin: 0;
+  font-size: 1.18rem;
+  font-weight: 900;
+  line-height: 1.3;
+}
+
+.history-modern-top p {
+  margin: 8px 0 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.history-score-circle {
+  width: 82px;
+  height: 82px;
+  flex: 0 0 82px;
+  border-radius: 26px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at top, rgba(34, 197, 94, 0.22), rgba(34, 197, 94, 0.08));
+  border: 1px solid rgba(34, 197, 94, 0.18);
+}
+
+.history-score-circle strong {
+  font-size: 1.7rem;
+  font-weight: 950;
+  color: #22c55e !important;
+  line-height: 1;
+}
+
+.history-score-circle span {
+  margin-top: 2px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #22c55e !important;
+}
+
+.history-modern-metrics {
+  margin-top: 22px;
+  display: grid;
+  gap: 12px;
+}
+
+.history-modern-metrics div {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 18px;
+}
+
+.candidate-dashboard.dark .history-modern-metrics div {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.candidate-dashboard.light .history-modern-metrics div {
+  background: #f8fafc;
+}
+
+.history-modern-metrics span {
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.history-modern-metrics strong {
+  font-size: 0.95rem;
+  font-weight: 900;
+}
+
+.history-bottom {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.history-category {
+  padding: 10px 14px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 850;
+  background: rgba(59, 130, 246, 0.14);
+  color: #3b82f6 !important;
+}
+
+/* ===== RESPONSIVE ===== */
+
+@media (max-width: 900px) {
+  .candidate-hero,
+  .start-interview-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .candidate-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .start-interview-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .skill-select,
+  .primary-action {
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .candidate-dashboard {
+    padding: 0;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .candidate-shell {
+    width: 100%;
+    padding: 86px 14px 28px;
+    box-sizing: border-box;
+  }
+
+  .candidate-hero {
+    gap: 18px;
+    padding: 24px 18px;
+    border-radius: 24px;
+  }
+
+  .candidate-hero h1 {
+    font-size: clamp(1.8rem, 8vw, 2.6rem);
+    line-height: 1.05;
+    word-break: break-word;
+  }
+
+  .candidate-hero p {
+    font-size: 0.95rem;
+    line-height: 1.6;
+  }
+
+  .start-interview-card {
+    gap: 18px;
+    padding: 20px 16px;
+  }
+
+  .start-left h2 {
+    font-size: 1.35rem;
+    line-height: 1.2;
+  }
+
+  .start-left p {
+    font-size: 0.92rem;
+    line-height: 1.55;
+  }
+
+  .start-interview-actions {
+    width: 100%;
+    gap: 12px;
+  }
+
+  .skill-select,
+  .large-btn {
+    width: 100%;
+    min-height: 48px;
+  }
+
+  .candidate-grid {
+    gap: 16px;
+  }
+
+  .candidate-card {
+    padding: 20px 16px;
+    border-radius: 22px;
+  }
+
+  .profile-card p {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 12px 0;
+    word-break: break-word;
+  }
+
+  .profile-card p span {
+    min-width: auto;
+    font-size: 0.78rem;
+  }
+
+  .analytics-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .metric-card {
+    min-height: 120px;
+    padding: 16px 14px;
+    border-radius: 20px;
+  }
+
+  .metric-card span {
+    margin-bottom: 28px;
+    font-size: 0.78rem;
+    line-height: 1.3;
+  }
+
+  .metric-card strong {
+    font-size: 2rem;
+  }
+
+  .section-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .history-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .history-modern-card {
+    padding: 20px;
+    border-radius: 24px;
+  }
+
+  .history-modern-top {
+    gap: 12px;
+  }
+
+  .history-modern-top h3 {
+    font-size: 1rem;
+  }
+
+  .history-score-circle {
+    width: 72px;
+    height: 72px;
+    flex-basis: 72px;
+    border-radius: 22px;
+  }
+
+  .history-score-circle strong {
+    font-size: 1.4rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .candidate-shell {
+    padding-inline: 10px;
+  }
+
+  .candidate-hero {
+    padding: 22px 14px;
+  }
+
+  .candidate-hero h1 {
+    font-size: 1.75rem;
+  }
+
+  .candidate-card {
+    padding: 18px 14px;
+  }
+
+  .analytics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .metric-card {
+    min-height: 105px;
+  }
+
+  .skill-select {
+    font-size: 0.9rem;
+  }
+
+  .history-modern-card {
+    padding: 18px;
+  }
+
+  .history-modern-metrics div {
+    padding: 12px 14px;
+  }
+
+  .history-category {
+    width: 100%;
+    text-align: center;
+  }
+}
