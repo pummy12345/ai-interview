@@ -5,6 +5,26 @@ import "./AdminDashboard.css";
 type AppLang = "en" | "hi" | "kn";
 type AppTheme = "light" | "dark";
 
+type AnswerRecord = {
+  questionNumber?: number;
+  prompt?: string;
+  question?: string;
+  answer?: string;
+  score?: number;
+  feedback?: string;
+  assessment?: {
+    relevance?: number;
+    completeness?: number;
+    clarity?: number;
+    confidence?: number;
+  };
+  integrity?: {
+    riskLevel?: string;
+    reasons?: string[];
+  };
+  answeredAt?: string;
+};
+
 type CandidateRecord = {
   id: string;
   candidate?: {
@@ -36,6 +56,12 @@ type CandidateRecord = {
   attemptCount?: number;
 
   decision?: string;
+  decisionExplanation?: string;
+  skillMismatch?: boolean;
+  detectedSkill?: string | null;
+  selectedOriginalSkill?: string | null;
+  answers?: AnswerRecord[];
+  reviewedAt?: string;
 
   submittedAt?: string;
 };
@@ -121,6 +147,19 @@ const TEXT = {
 
     confidence: "Confidence",
     currentDecision: "Current decision",
+    finalDecision: "Admin final decision",
+    saveDecision: "Save decision",
+    transcript: "Interview transcript",
+    viewDetails: "View details",
+    hideDetails: "Hide details",
+    flags: "Flags",
+    noFlags: "No flags detected",
+    skillMismatch: "Skill mismatch",
+    selectedSkill: "Selected skill",
+    detectedSkill: "Detected skill",
+    answerScore: "Score",
+    aiFeedback: "AI feedback",
+    decisionSaved: "Decision saved",
   },
 
   hi: {
@@ -179,6 +218,19 @@ const TEXT = {
 
     confidence: "कॉन्फिडेंस",
     currentDecision: "वर्तमान निर्णय",
+    finalDecision: "एडमिन अंतिम निर्णय",
+    saveDecision: "निर्णय सेव करें",
+    transcript: "इंटरव्यू प्रश्न-उत्तर",
+    viewDetails: "विवरण देखें",
+    hideDetails: "विवरण छुपाएं",
+    flags: "फ्लैग",
+    noFlags: "कोई फ्लैग नहीं",
+    skillMismatch: "स्किल मिसमैच",
+    selectedSkill: "चुनी गई स्किल",
+    detectedSkill: "पहचानी गई स्किल",
+    answerScore: "स्कोर",
+    aiFeedback: "एआई फीडबैक",
+    decisionSaved: "निर्णय सेव हो गया",
   },
 
   kn: {
@@ -237,6 +289,19 @@ const TEXT = {
 
     confidence: "ವಿಶ್ವಾಸ",
     currentDecision: "ಪ್ರಸ್ತುತ ನಿರ್ಧಾರ",
+    finalDecision: "ಅಡ್ಮಿನ್ ಅಂತಿಮ ನಿರ್ಧಾರ",
+    saveDecision: "ನಿರ್ಧಾರ ಉಳಿಸಿ",
+    transcript: "ಸಂದರ್ಶನ ಪ್ರಶ್ನೋತ್ತರ",
+    viewDetails: "ವಿವರ ನೋಡಿ",
+    hideDetails: "ವಿವರ ಮರೆಮಾಡಿ",
+    flags: "ಫ್ಲ್ಯಾಗ್‌ಗಳು",
+    noFlags: "ಫ್ಲ್ಯಾಗ್ ಇಲ್ಲ",
+    skillMismatch: "ಕೌಶಲ್ಯ ವ್ಯತ್ಯಾಸ",
+    selectedSkill: "ಆಯ್ಕೆ ಮಾಡಿದ ಕೌಶಲ್ಯ",
+    detectedSkill: "ಗುರುತಿಸಿದ ಕೌಶಲ್ಯ",
+    answerScore: "ಸ್ಕೋರ್",
+    aiFeedback: "ಎಐ ಪ್ರತಿಕ್ರಿಯೆ",
+    decisionSaved: "ನಿರ್ಧಾರ ಉಳಿಸಲಾಗಿದೆ",
   },
 };
 
@@ -278,6 +343,18 @@ const AdminDashboard = () => {
 
   const [sortDirection, setSortDirection] =
     useState<"asc" | "desc">("desc");
+
+  const [expandedCandidateId, setExpandedCandidateId] =
+    useState<string | null>(null);
+
+  const [decisionDrafts, setDecisionDrafts] =
+    useState<Record<string, string>>({});
+
+  const [savingDecisionId, setSavingDecisionId] =
+    useState<string | null>(null);
+
+  const [dashboardMessage, setDashboardMessage] =
+    useState("");
 
   useEffect(() => {
     const syncNavbarSettings = () => {
@@ -366,6 +443,84 @@ const AdminDashboard = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const getCandidateDecision = (candidate: CandidateRecord) =>
+    decisionDrafts[candidate.id] ||
+    candidate.decision ||
+    "Manual verification";
+
+  const updateCandidateDecision = async (
+    candidateId: string
+  ) => {
+    try {
+      setSavingDecisionId(candidateId);
+      setDashboardMessage("");
+
+      const decision =
+        decisionDrafts[candidateId] ||
+        candidates.find((item) => item.id === candidateId)?.decision ||
+        "Manual verification";
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/admin/candidates/${candidateId}/decision`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ decision }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || data.message || "Decision update failed"
+        );
+      }
+
+      setCandidates((prev) =>
+        prev.map((item) =>
+          item.id === candidateId
+            ? {
+                ...item,
+                decision,
+                reviewedAt: new Date().toISOString(),
+              }
+            : item
+        )
+      );
+
+      setDashboardMessage(t.decisionSaved);
+    } catch (error) {
+      setDashboardMessage(
+        error instanceof Error
+          ? error.message
+          : "Decision update failed"
+      );
+    } finally {
+      setSavingDecisionId(null);
+    }
+  };
+
+  const getAllFlags = (candidate: CandidateRecord) => {
+    const flags = [...(candidate.flaggedReasons || [])];
+
+    if (candidate.repeatedAttempt) {
+      flags.push("Repeated attempt detected");
+    }
+
+    if (candidate.skillMismatch) {
+      flags.push(
+        `Skill mismatch: selected ${
+          candidate.selectedOriginalSkill || "N/A"
+        }, detected ${candidate.detectedSkill || "N/A"}`
+      );
+    }
+
+    return [...new Set(flags)];
   };
 
   const filteredCandidates = useMemo(() => {
@@ -495,6 +650,11 @@ const AdminDashboard = () => {
       "Confidence Score",
       "Category",
       "Decision",
+      "Skill Mismatch",
+      "Detected Skill",
+      "Selected Original Skill",
+      "Flagged Reasons",
+      "Transcript",
     ];
 
     const rows = filteredCandidates.map((candidate) => {
@@ -527,6 +687,18 @@ const AdminDashboard = () => {
         candidate.confidenceScore,
         candidate.category || "",
         candidate.decision || "",
+        candidate.skillMismatch ? "Yes" : "No",
+        candidate.detectedSkill || "",
+        candidate.selectedOriginalSkill || "",
+        (candidate.flaggedReasons || []).join(" | "),
+        (candidate.answers || [])
+          .map(
+            (answer) =>
+              `Q${answer.questionNumber || ""}: ${
+                answer.prompt || answer.question || ""
+              } A: ${answer.answer || ""}`
+          )
+          .join(" | "),
       ];
     });
 
@@ -748,6 +920,12 @@ const AdminDashboard = () => {
           </label>
         </section>
 
+        {dashboardMessage && (
+          <div className="dashboard-message">
+            {dashboardMessage}
+          </div>
+        )}
+
         {loading ? (
           <div className="dashboard-loading">
             {t.loading}
@@ -830,17 +1008,126 @@ const AdminDashboard = () => {
                       </div>
                     </div>
 
-                    <div className="candidate-footer">
-                      <div>
-                        <span className="footer-label">
-                          {t.currentDecision}
-                        </span>
+                    {(() => {
+                      const flags = getAllFlags(candidate);
+                      const isExpanded = expandedCandidateId === candidate.id;
 
-                        <strong>
-                          {candidate.decision}
-                        </strong>
-                      </div>
-                    </div>
+                      return (
+                        <>
+                          <div className="candidate-flags">
+                            {flags.length > 0 ? (
+                              flags.map((flag, index) => (
+                                <span
+                                  key={`${candidate.id}-flag-${index}`}
+                                  className="flag-item"
+                                >
+                                  ⚠ {flag}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="flag-item safe">
+                                ✅ {t.noFlags}
+                              </span>
+                            )}
+                          </div>
+
+                          {candidate.skillMismatch && (
+                            <div className="skill-mismatch-box">
+                              <strong>{t.skillMismatch}</strong>
+
+                              <p>
+                                {t.selectedSkill}: {candidate.selectedOriginalSkill || "N/A"}
+                              </p>
+
+                              <p>
+                                {t.detectedSkill}: {candidate.detectedSkill || "N/A"}
+                              </p>
+                            </div>
+                          )}
+
+                          <div className="candidate-footer">
+                            <div>
+                              <span className="footer-label">
+                                {t.currentDecision}
+                              </span>
+
+                              <strong>{candidate.decision}</strong>
+                            </div>
+
+                            <div className="candidate-actions">
+                              <button
+                                className="contact-btn"
+                                onClick={() => {
+                                  const phone = candidate.candidate?.phone || candidate.phone;
+                                  if (phone) window.open(`tel:${phone}`);
+                                }}
+                              >
+                                📞 Call
+                              </button>
+
+                              <button
+                                className="contact-btn whatsapp"
+                                onClick={() => {
+                                  const rawPhone = candidate.candidate?.phone || candidate.phone;
+                                  const phone = String(rawPhone || "").replace(/\D/g, "");
+
+                                  if (phone) {
+                                    window.open(`https://wa.me/91${phone}`);
+                                  }
+                                }}
+                              >
+                                💬 WhatsApp
+                              </button>
+                            </div>
+                          </div>
+
+                          {isExpanded && (
+                            <div className="transcript-panel">
+                              <h3>{t.transcript}</h3>
+
+                              {candidate.answers?.length ? (
+                                candidate.answers.map((answer, index) => (
+                                  <div
+                                    key={`${candidate.id}-answer-${index}`}
+                                    className="transcript-card"
+                                  >
+                                    <div className="transcript-question-row">
+                                      <strong>
+                                        Q{answer.questionNumber || index + 1}
+                                      </strong>
+
+                                      <span>
+                                        {t.answerScore}: {answer.score ?? 0}/100
+                                      </span>
+                                    </div>
+
+                                    <p className="transcript-question">
+                                      {answer.prompt || answer.question || "Question not available"}
+                                    </p>
+
+                                    <div className="transcript-answer">
+                                      <span>Answer</span>
+                                      <p>{answer.answer || "No answer captured"}</p>
+                                    </div>
+
+                                    {answer.feedback && (
+                                      <div className="transcript-feedback">
+                                        <span>{t.aiFeedback}</span>
+                                        <p>{answer.feedback}</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))
+                              ) : (
+                                <p className="transcript-empty">
+                                  Transcript not available.
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                   </article>
                 );
               })

@@ -8,6 +8,8 @@ import axios from "axios";
 import FormData from "form-data";
 import Groq from "groq-sdk";
 import { DeepgramClient } from "@deepgram/sdk";
+import Tesseract from "tesseract.js";
+
 
 import questionBank from "./questionBank.js";
 import InterviewResult from "./models/InterviewResult.js";
@@ -99,9 +101,8 @@ const userSchema = new mongoose.Schema(
     name: String,
     phone: {
       type: String,
-      required: true,
-      unique: true,
-      index: true,
+      required: false,
+      default: null,
     },
     email: {
       type: String,
@@ -114,6 +115,21 @@ const userSchema = new mongoose.Schema(
       unique: true,
       index: true,
     },
+    maskedAadhar: {
+  type: String,
+  default: null,
+},
+
+kycStatus: {
+  type: String,
+  enum: ["PENDING", "VERIFIED"],
+  default: "PENDING",
+},
+
+kycMethod: {
+  type: String,
+  default: "Aadhaar Number Provided",
+},
       district: {
     type: String,
     required: true,
@@ -251,6 +267,52 @@ function normalizeText(value) {
   return String(value || "").trim().toLowerCase();
 }
 
+function detectSkillFromAnswer(answer = "", selectedSkill = "") {
+  const text = normalizeText(answer);
+  const selected = normalizeText(selectedSkill);
+
+  if (!text || text.length < 6) return null;
+
+  if (
+    text.includes("driver") ||
+    text.includes("truck") ||
+    text.includes("vehicle driver") ||
+    text.includes("driving") ||
+    text.includes("license")
+  ) {
+    return "Driver";
+  }
+
+  if (
+    selected !== "driver" &&
+    (
+      text.includes("warehouse") ||
+      text.includes("inventory") ||
+      text.includes("scanner") ||
+      text.includes("packing")
+    )
+  ) {
+    return "Warehouse operations";
+  }
+
+  if (
+    text.includes("electric") ||
+    text.includes("wiring") ||
+    text.includes("voltage")
+  ) {
+    return "Electrical technician";
+  }
+
+  if (
+    text.includes("contractor") ||
+    text.includes("construction") ||
+    text.includes("site work")
+  ) {
+    return "Construction helper";
+  }
+
+  return null;
+}
 function resolveSkillKey(skill = "") {
   const normalized = normalizeText(skill);
 
@@ -456,6 +518,79 @@ function safeJsonParse(rawText = "") {
     } catch {
       return null;
     }
+  }
+}
+async function generateDynamicQuestion({
+  previousQuestion,
+  candidateAnswer,
+  skill,
+  language,
+  questionNumber,
+}) {
+  if (!groq) return null;
+
+  try {
+    const completion = await groq.chat.completions.create({
+      model: process.env.GROQ_MODEL || "llama-3.1-8b-instant",
+      temperature: 0.5,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are an AI interviewer for Indian blue-collar, semi-skilled, and polytechnic candidates. Ask one practical follow-up question based on the candidate answer. Stay inside selected skill. Use simple spoken language. Return only JSON.",
+        },
+        {
+          role: "user",
+          content: `
+Candidate Skill: ${skill}
+Interview Language: ${languageName(language)}
+Question Number: ${questionNumber}/5
+
+Previous Question:
+${previousQuestion}
+
+Candidate Answer:
+${candidateAnswer}
+
+Rules:
+- Ask one practical follow-up question only.
+- Stay strictly inside selected skill: ${skill}.
+- Do not ask unrelated skill questions.
+- Ask human-like spoken interview questions.
+- Do not ask theory-heavy questions.
+- If candidate says "nothing", "no idea", "I don't know", "not sure", or gives a short unclear answer, ask a simple recovery question.
+- Recovery question should help candidate explain any real work experience.- If candidate seems confused about a topic, simplify the next question.
+- If candidate does not understand warehouse scanner/inventory terminology, switch to practical warehouse tasks like loading, packing, lifting, goods movement, teamwork, safety, attendance, timing, etc.
+- Never repeat the same failed topic continuously.
+- Behave like a supportive human interviewer.
+- If candidate struggles, move to easier practical questions.
+- If selected skill is Driver, ask only about driving, vehicle, route, license, safety, or emergency handling.
+- If selected skill is Electrical technician, ask about wiring, tools, safety, repair, or fault finding.
+- If selected skill is Warehouse operations, ask about loading, packing, inventory, scanning, or goods handling.
+- If selected skill is Construction helper, ask about site work, materials, labour support, or safety.
+- If selected skill is Machine operator, ask about machine handling, maintenance, safety, or production work.
+- If candidate clearly corrects the skill, ask one clarification question before switching.
+- Use simple practical language.
+- Use ${languageName(language)} language.
+
+Return JSON only:
+{
+  "question": "next interview question"
+}
+`,
+        },
+      ],
+    });
+
+    const parsed = safeJsonParse(
+      completion.choices?.[0]?.message?.content || ""
+    );
+
+    return parsed?.question || null;
+  } catch (err) {
+    console.error("Dynamic question generation failed:", err.message);
+    return null;
   }
 }
 
@@ -731,7 +866,11 @@ function buildInterviewRecord(session) {
   if (repeatedAttempt) {
     flaggedReasons.push("Candidate fingerprint matches a previous interview attempt");
   }
-
+   if (session.skillMismatch) {
+  flaggedReasons.push(
+    `Skill mismatch: selected ${session.selectedOriginalSkill}, detected ${session.detectedSkill}`
+  );
+}
   const decision = decisionFromScore(averageScore, riskLevel, repeatedAttempt);
   const category = categoryFromScore(averageScore, riskLevel, repeatedAttempt);
 
@@ -763,6 +902,11 @@ function buildInterviewRecord(session) {
       riskLevel,
       reasons: flaggedReasons,
     },
+      skillMismatch: session.skillMismatch || false,
+    detectedSkill: session.detectedSkill || null,
+    selectedOriginalSkill:
+  session.selectedOriginalSkill || session.candidate.skill,
+    
 
     answers: session.answers,
 
@@ -856,6 +1000,10 @@ console.log("SELECTED QUESTIONS:", selectedQuestions);
       answers: [],
       previousAttemptCount,
       createdAt: Date.now(),
+      pendingSkillSwitch: null,
+      skillMismatch: false,
+      detectedSkill: null,
+      selectedOriginalSkill: candidate.skill,
     });
 
     res.json({
@@ -899,6 +1047,93 @@ app.post("/next", async (req, res) => {
 
     const currentQuestionNumber = session.index + 1;
     const prompt = session.prompts[session.index];
+    const detectedSkill = detectSkillFromAnswer(
+  answer,
+  session.candidate.skill
+);
+
+if (
+  detectedSkill &&
+  detectedSkill !== session.candidate.skill &&
+  !session.pendingSkillSwitch
+) {
+  session.pendingSkillSwitch = detectedSkill;
+  session.detectedSkill = detectedSkill;
+  session.skillMismatch = true;
+
+  session.answers.push({
+    questionNumber: currentQuestionNumber,
+    prompt,
+    answer: normalizeAnswer(answer),
+    score: 0,
+    feedback: "Skill mismatch detected. Clarification required.",
+    assessment: {
+      relevance: 0,
+      completeness: 0,
+      clarity: 0,
+      confidence: 0,
+    },
+    integrity: {
+      riskLevel: "Medium",
+      reasons: [
+        `Selected ${session.candidate.skill}, but answer sounds like ${detectedSkill}`,
+      ],
+    },
+    answeredAt: new Date().toISOString(),
+  });
+
+  session.index += 1;
+   const langKey = questionLanguageKey(session.language);
+
+const clarificationQuestion =
+  langKey === "hi"
+    ? `आपने ${session.candidate.skill} चुना है, लेकिन आपका उत्तर ${detectedSkill} जैसा लग रहा है। क्या आप ${session.candidate.skill} जारी रखना चाहते हैं या ${detectedSkill} पर स्विच करना चाहते हैं?`
+    : langKey === "kn"
+    ? `ನೀವು ${session.candidate.skill} ಆಯ್ಕೆ ಮಾಡಿಕೊಂಡಿದ್ದೀರಿ, ಆದರೆ ನಿಮ್ಮ ಉತ್ತರ ${detectedSkill} ಕೆಲಸದಂತಿದೆ. ನೀವು ${session.candidate.skill} ಮುಂದುವರಿಸಲು ಬಯಸುತ್ತೀರಾ ಅಥವಾ ${detectedSkill} ಗೆ ಬದಲಾಯಿಸಬೇಕೇ?`
+    : `You selected ${session.candidate.skill}, but your answer sounds like ${detectedSkill}. Do you want to continue with ${session.candidate.skill}, or switch to ${detectedSkill}?`;
+
+  session.prompts[session.index] = clarificationQuestion;
+
+  return res.json({
+    success: true,
+    score: 0,
+    averageScore: 0,
+    feedback: "",
+    assessment: {},
+    integrity: {
+      riskLevel: "Medium",
+      reasons: [
+        `Skill mismatch detected: selected ${session.candidate.skill}, detected ${detectedSkill}`,
+      ],
+    },
+    nextQuestion: clarificationQuestion,
+    question: clarificationQuestion,
+    questionNumber: session.index + 1,
+    totalQuestions: TOTAL_QUESTIONS,
+    completed: false,
+    skillMismatch: true,
+    detectedSkill,
+    selectedSkill: session.candidate.skill,
+    finalResult: null,
+  });
+}
+if (session.pendingSkillSwitch) {
+  const lowerAnswer = normalizeText(answer);
+  const pendingSkill = session.pendingSkillSwitch;
+
+  if (
+    lowerAnswer.includes("switch") ||
+    lowerAnswer.includes("change") ||
+    lowerAnswer.includes(normalizeText(pendingSkill)) ||
+    lowerAnswer.includes("yes")
+  ) {
+    session.candidate.skill = pendingSkill;
+    session.candidate.trade = pendingSkill;
+  }
+
+  session.pendingSkillSwitch = null;
+}
+
 
     let evaluation = await evaluateWithGroq({
       question: prompt,
@@ -939,9 +1174,56 @@ app.post("/next", async (req, res) => {
     let nextQuestion = null;
     let finalResult = null;
 
-    if (!completed) {
-      nextQuestion = session.prompts[session.index];
-    }
+  if (!completed) {
+  const lowerAnswer = normalizeText(answer);
+
+const unclearAnswer =
+  answer.length < 6 ||
+  lowerAnswer.includes("nothing") ||
+  lowerAnswer.includes("no idea") ||
+  lowerAnswer.includes("don't know") ||
+  lowerAnswer.includes("not sure") ||
+  lowerAnswer.includes("कुछ नहीं") ||
+  lowerAnswer.includes("पता नहीं") ||
+  lowerAnswer.includes("ಗೊತ್ತಿಲ್ಲ");
+  let dynamicQuestion = null;
+
+  if (unclearAnswer) {
+     const langKey = questionLanguageKey(session.language);
+
+if (langKey === "hi") {
+  dynamicQuestion =
+    "कोई बात नहीं। आपने पहले किस प्रकार का काम किया है उसके बारे में बताइए।";
+} else if (langKey === "kn") {
+  dynamicQuestion =
+    "ಪರವಾಗಿಲ್ಲ. ನೀವು ಹಿಂದೆ ಯಾವ ರೀತಿಯ ಕೆಲಸ ಮಾಡಿದ್ದಾರೆ ಎಂದು ಹೇಳಿ.";
+} else {
+  dynamicQuestion =
+    "No problem. Can you tell me what type of work you have done before?";
+}
+  } else {
+    dynamicQuestion = await generateDynamicQuestion({
+      previousQuestion: prompt,
+      candidateAnswer: answer,
+      skill: session.candidate.skill,
+      language: session.language,
+      questionNumber: session.index + 1,
+    });
+  }
+
+  const fallbackQuestions = getInterviewQuestions(
+    session.candidate.skill,
+    session.language
+  );
+
+  nextQuestion =
+    dynamicQuestion ||
+    fallbackQuestions[session.index] ||
+    session.prompts[session.index] ||
+    "Can you tell me any work you have done before, even if it is small?";
+
+  session.prompts[session.index] = nextQuestion;
+}
 
     if (completed) {
       const record = buildInterviewRecord(session);
@@ -973,6 +1255,11 @@ app.post("/next", async (req, res) => {
         decision: record.decision,
         decisionExplanation: record.decisionExplanation,
         submittedAt: record.submittedAt,
+
+        answers: record.answers,
+        skillMismatch: record.skillMismatch,
+        detectedSkill: record.detectedSkill,
+        selectedOriginalSkill: record.selectedOriginalSkill,
       });
 
       finalResult = {
@@ -1131,12 +1418,27 @@ app.post("/api/transcribe", upload.single("audio"), async (req, res) => {
 
 app.post("/api/auth/register", async (req, res) => {
   try {
-    const { phone, aadharNumber, name, district, skills, deviceId, email } = req.body;
+    console.log("REGISTER BODY:", req.body);
 
-    if (!phone || !aadharNumber) {
+    const {
+      phone,
+      aadharNumber,
+      name,
+      district,
+      skills,
+      deviceId,
+      email,
+      maskedAadhar,
+      kycStatus,
+      kycMethod,
+      aadharVerified,
+      preferredLanguage,
+    } = req.body;
+
+    if (!name || !aadharNumber || !district || !Array.isArray(skills) || skills.length === 0) {
       return res.status(400).json({
         success: false,
-        error: "Phone and Aadhar are required",
+        error: "Name, Aadhar, district and skills are required",
       });
     }
 
@@ -1144,7 +1446,7 @@ app.post("/api/auth/register", async (req, res) => {
     const cleanAadhar = normalizeAadhar(aadharNumber);
     const cleanEmail = email ? String(email).trim().toLowerCase() : undefined;
 
-    if (cleanPhone.length !== 10) {
+    if (cleanPhone && cleanPhone.length !== 10) {
       return res.status(400).json({
         success: false,
         error: "Phone number must be 10 digits",
@@ -1158,35 +1460,43 @@ app.post("/api/auth/register", async (req, res) => {
       });
     }
 
-    const duplicateQuery = {
-      $or: [
-        { phone: cleanPhone },
-        { aadharNumber: cleanAadhar },
-        ...(cleanEmail ? [{ email: cleanEmail }] : []),
-      ],
-    };
+    const duplicateConditions = [{ aadharNumber: cleanAadhar }];
 
-    const existingUser = await Candidate.findOne(duplicateQuery);
+    if (cleanPhone) {
+      duplicateConditions.push({ phone: cleanPhone });
+    }
+
+    if (cleanEmail) {
+      duplicateConditions.push({ email: cleanEmail });
+    }
+
+    const existingUser = await Candidate.findOne({
+      $or: duplicateConditions,
+    });
 
     if (existingUser) {
       return res.status(409).json({
         success: false,
-        error: "Phone, Email, or Aadhar already exists",
+        error: "Candidate already exists with same Phone or Aadhar",
       });
     }
 
-   const user = await Candidate.create({
-  phone: cleanPhone,
-  aadharNumber: cleanAadhar,
-  name: titleCase(name || "Candidate"),
-  district: titleCase(district || ""),
-  skills: Array.isArray(skills) ? skills : [],
-  deviceId: deviceId || "",
-  email: cleanEmail,
-  preferredLanguage: req.body.preferredLanguage || "en",
-  selectedSkill: null,
-  role: "candidate",
-});
+    const user = await Candidate.create({
+      name: titleCase(name),
+      phone: cleanPhone || null,
+      aadharNumber: cleanAadhar,
+      maskedAadhar: maskedAadhar || `XXXX XXXX ${cleanAadhar.slice(-4)}`,
+      district: titleCase(district),
+      skills,
+      deviceId: deviceId || "",
+      email: cleanEmail,
+      preferredLanguage: preferredLanguage || "en",
+      selectedSkill: null,
+      role: "candidate",
+      aadharVerified: Boolean(aadharVerified),
+      kycStatus: kycStatus || "PENDING",
+      kycMethod: kycMethod || "Aadhaar Number Provided",
+    });
 
     res.json({
       success: true,
@@ -1195,11 +1505,15 @@ app.post("/api/auth/register", async (req, res) => {
       token: user._id,
     });
   } catch (err) {
+    console.error("REGISTER ERROR:", err);
+
     const duplicate = err.code === 11000;
 
     res.status(duplicate ? 409 : 500).json({
       success: false,
-      error: duplicate ? "Phone, Email, or Aadhar already exists" : err.message,
+      error: duplicate
+        ? "Phone, Email, or Aadhar already exists"
+        : err.message,
     });
   }
 });
@@ -1208,10 +1522,10 @@ app.post("/api/auth/login", async (req, res) => {
   try {
     const { phone, aadharNumber } = req.body;
 
-    if (!phone || !aadharNumber) {
+    if ( !aadharNumber) {
       return res.status(400).json({
         success: false,
-        error: "Phone and Aadhar are required",
+        error: "Aadhar is required",
       });
     }
 
@@ -1221,15 +1535,19 @@ app.post("/api/auth/login", async (req, res) => {
 console.log("CLEAN PHONE:", cleanPhone);
 console.log("CLEAN AADHAR:", cleanAadhar);
 
-    const user = await Candidate.findOne({
-      phone: cleanPhone,
+    const loginQuery = {
       aadharNumber: cleanAadhar,
-    });
+    };
 
+    if (cleanPhone) {
+      loginQuery.phone = cleanPhone;
+    }
+
+    const user = await Candidate.findOne(loginQuery);
     if (!user) {
       return res.status(401).json({
         success: false,
-        error: "Invalid phone or Aadhar",
+        error: "Invalid Aadhar",
       });
     }
 
@@ -1323,6 +1641,10 @@ app.get("/api/admin/candidates", async (req, res) => {
       decisionExplanation: item.decisionExplanation || "",
 
       submittedAt: item.submittedAt || item.createdAt || new Date(),
+      skillMismatch: item.skillMismatch || false,
+      detectedSkill: item.detectedSkill || null,
+      selectedOriginalSkill: item.selectedOriginalSkill || null,
+      answers: item.answers || [],
     }));
 
     res.json({
@@ -1409,7 +1731,9 @@ app.post("/api/admin/candidates/:id/decision", async (req, res) => {
 
     const updated = await InterviewResult.findByIdAndUpdate(
       req.params.id,
-      { decision },
+      { decision,
+        reviewedAt: new Date(),
+       },
       { new: true }
     );
 
@@ -1531,6 +1855,66 @@ app.put("/api/candidates/:id/profile", async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Profile update failed",
+      error: error.message,
+    });
+  }
+});
+
+app.post("/api/kyc/verify", upload.single("aadhaarFile"), async (req, res) => {
+  try {
+    const { aadharNumber } = req.body;
+
+    if (!aadharNumber || aadharNumber.length !== 12) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid Aadhaar number is required",
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "Aadhaar document is required",
+      });
+    }
+
+    const result = await Tesseract.recognize(req.file.buffer, "eng");
+
+    const extractedText = result.data.text || "";
+
+    const aadhaarMatches = extractedText.match(/\b\d{4}\s?\d{4}\s?\d{4}\b/g);
+
+    const extractedAadhaarList =
+      aadhaarMatches?.map((num) => num.replace(/\s/g, "")) || [];
+      const pinMatch = extractedText.match(/\b[1-9][0-9]{5}\b/);
+      const extractedPinCode = pinMatch ? pinMatch[0] : null;
+
+      let extractedAddress = "";
+      const addressIndex = extractedText.toLowerCase().indexOf("address");
+
+      if (addressIndex !== -1) {
+        extractedAddress = extractedText
+          .slice(addressIndex, addressIndex + 250)
+          .replace(/\n/g, " ")
+          .trim();
+      }
+
+    const isMatched = extractedAadhaarList.includes(aadharNumber);
+
+    return res.json({
+  success: true,
+  verified: isMatched,
+  extractedAadhaar: isMatched ? `XXXX XXXX ${aadharNumber.slice(-4)}` : null,
+  extractedPinCode,
+  extractedAddress,
+  message: isMatched
+    ? "Aadhaar document verified successfully"
+    : "Uploaded document does not match entered Aadhaar number",
+});
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "OCR verification failed",
       error: error.message,
     });
   }

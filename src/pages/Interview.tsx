@@ -58,6 +58,10 @@ type NextResponse = {
   totalQuestions: number;
   completed: boolean;
   finalResult?: FinalResult | null;
+  skillMismatch?: boolean;
+detectedSkill?: string;
+selectedSkill?: string;
+
 };
 
 type MediaSnapshot = {
@@ -166,7 +170,12 @@ useEffect(() => {
     window.removeEventListener("pagehide", cleanupInterview);
   };
 }, []);
-  const selectedSkill = routeState.skill || authCandidate?.skills?.[0] || "";
+  const selectedSkill =
+  routeState.selectedSkill ||
+  routeState.skill ||
+  authCandidate?.selectedSkill ||
+  authCandidate?.skills?.[0] ||
+  "";
 
   const [language, setLanguage] = useState<LocaleCode>(() =>
     resolveInitialLanguage(routeState.language)
@@ -1046,6 +1055,12 @@ console.log("Laptop recording mimeType:", mediaRecorder.mimeType);
       if (!response.ok) throw new Error(`Backend responded with ${response.status}`);
 
       const data: NextResponse = await response.json();
+      if (data.skillMismatch && data.detectedSkill) {
+      setIntegrityNotes((prev) => [
+        ...prev,
+        `Skill mismatch detected: selected ${data.selectedSkill}, answer sounds like ${data.detectedSkill}`,
+      ]);
+        }
 
       setScore(data.score ?? 0);
       setAverageScore(data.averageScore ?? data.score ?? 0);

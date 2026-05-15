@@ -84,7 +84,7 @@ const AdminLogin: React.FC = () => {
           "true"
         );
 
-        navigate("/admin-dashboard", {
+        navigate("/admin", {
           replace: true,
         });
       } else {

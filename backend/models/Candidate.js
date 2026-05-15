@@ -10,20 +10,29 @@ const candidateSchema = new mongoose.Schema(
       maxlength: 60,
     },
 
+    // ✅ Phone is optional now
     phone: {
       type: String,
-      required: true,
-      unique: true,
+      required: false,
       trim: true,
-      match: /^[6-9]\d{9}$/,
+      default: null,
+      match: [/^[6-9]\d{9}$/, "Invalid phone number"],
     },
 
+    // ✅ Aadhaar remains mandatory
     aadharNumber: {
       type: String,
       required: true,
       unique: true,
       trim: true,
-      match: /^\d{12}$/,
+      match: [/^\d{12}$/, "Aadhaar number must be 12 digits"],
+    },
+
+    // ✅ Store masked Aadhaar also
+    maskedAadhar: {
+      type: String,
+      default: null,
+      trim: true,
     },
 
     district: {
@@ -32,13 +41,14 @@ const candidateSchema = new mongoose.Schema(
       trim: true,
     },
 
+    // ✅ Make state optional, because your frontend may not send it
     state: {
       type: String,
-      required: true,
+      required: false,
+      default: "Karnataka",
       trim: true,
     },
 
-    // 🔥 Candidate profile skills
     skills: {
       type: [String],
       required: true,
@@ -48,20 +58,17 @@ const candidateSchema = new mongoose.Schema(
       },
     },
 
-    // 🎯 Selected interview skill
     selectedSkill: {
       type: String,
       default: null,
     },
 
-    // 🌐 Preferred language
     preferredLanguage: {
       type: String,
       enum: ["en", "hi", "kn"],
       default: "en",
     },
 
-    // 📊 Interview analytics
     totalInterviews: {
       type: Number,
       default: 0,
@@ -77,7 +84,6 @@ const candidateSchema = new mongoose.Schema(
       default: 0,
     },
 
-    // 🚨 Fraud detection
     deviceId: {
       type: String,
       default: null,
@@ -98,26 +104,35 @@ const candidateSchema = new mongoose.Schema(
       default: [],
     },
 
-    // 🔐 Roles
     role: {
       type: String,
       enum: ["candidate", "employee", "admin"],
       default: "candidate",
     },
 
-    // ✅ Verification
     aadharVerified: {
       type: Boolean,
       default: false,
     },
 
-    // 👤 Profile image (future)
+    // ✅ KYC status
+    kycStatus: {
+      type: String,
+      enum: ["PENDING", "VERIFIED"],
+      default: "PENDING",
+    },
+
+    // ✅ KYC method
+    kycMethod: {
+      type: String,
+      default: "Aadhaar Number Provided",
+    },
+
     profileImage: {
       type: String,
       default: null,
     },
 
-    // 🕒 Last login
     lastLoginAt: {
       type: Date,
       default: null,
@@ -126,9 +141,20 @@ const candidateSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// ✅ Indexes
-candidateSchema.index({ phone: 1 }, { unique: true });
+// ✅ Aadhaar must be unique
 candidateSchema.index({ aadharNumber: 1 }, { unique: true });
+
+// ✅ Phone optional unique index
+// This allows multiple candidates with no phone number.
+candidateSchema.index(
+  { phone: 1 },
+  {
+    unique: true,
+    sparse: true,
+    partialFilterExpression: { phone: { $type: "string" } },
+  }
+);
+
 candidateSchema.index({ deviceId: 1 });
 
 export default mongoose.model("Candidate", candidateSchema);

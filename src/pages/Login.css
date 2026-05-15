@@ -11,30 +11,12 @@
 }
 
 .login-card {
-  width: min(100%, 540px);
-  padding: 34px;
+  width: min(100%, 680px);
+  padding: 48px;
   border-radius: 30px;
   background: var(--card);
   border: 1px solid var(--border);
   box-shadow: 0 24px 70px var(--shadow);
-  backdrop-filter: blur(18px);
-}
-
-.lang-switch {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 18px;
-}
-
-.lang-switch select {
-  padding: 8px 12px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text-h);
-  font-size: 0.85rem;
-  font-weight: 800;
-  outline: none;
 }
 
 .login-header {
@@ -51,24 +33,19 @@
   color: var(--accent);
   font-size: 0.75rem;
   font-weight: 950;
-  letter-spacing: 0.06em;
 }
 
 .login-card h1 {
   margin: 0;
   color: var(--text-h);
-  font-size: clamp(1.9rem, 5vw, 2.35rem);
-  line-height: 1.05;
+  font-size: clamp(2.6rem, 5vw, 3.4rem);
   font-weight: 950;
-  letter-spacing: -0.04em;
 }
 
 .login-card p {
-  margin: 10px auto 0;
-  max-width: 36ch;
+  margin: 12px auto 0;
   color: var(--muted);
-  font-size: 0.98rem;
-  line-height: 1.55;
+  font-size: 1rem;
 }
 
 .login-form {
@@ -76,54 +53,30 @@
   gap: 16px;
 }
 
-.form-group {
-  text-align: left;
-}
-
-.form-group label {
+.login-form .form-group label {
   display: block;
   margin-bottom: 8px;
-
-  color: #2563eb;
-
-  font-size: 0.9rem;
+  color: var(--text-h);
+  font-size: 0.95rem;
   font-weight: 900;
-  letter-spacing: 0.02em;
 }
 
-:root[data-theme="dark"] .form-group label {
-  color: #38bdf8;
+.aadhar-input-wrap {
+  position: relative;
 }
 
 .login-card input {
   width: 100%;
-  height: 54px;
-  padding: 0 16px;
+  height: 64px;
+  padding: 0 48px 0 16px;
   border-radius: 16px;
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text-h);
-  font-size: 1rem;
-  font-weight: 750;
+  font-size: 1.05rem;
+  font-weight: 850;
+  letter-spacing: 0.12em;
   outline: none;
-  transition: 0.2s ease;
-}
-
-:root[data-theme="light"] .login-card input {
-  background: #ffffff;
-  color: #0f172a;
-  border-color: #cbd5e1;
-}
-
-:root[data-theme="dark"] .login-card input {
-  background: #0f172a;
-  color: #f8fafc;
-  border-color: rgba(148, 163, 184, 0.25);
-}
-
-.login-card input::placeholder {
-  color: #94a3b8;
-  font-weight: 650;
 }
 
 .login-card input:focus {
@@ -131,53 +84,36 @@
   box-shadow: 0 0 0 4px var(--accent-bg);
 }
 
-.field-error {
-  display: block;
-  margin-top: 6px;
-  color: #ef4444;
-  font-size: 0.8rem;
-  font-weight: 750;
+.aadhar-input-icon {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
+.field-error,
 .error {
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: rgba(239, 68, 68, 0.12);
   color: #ef4444;
-  font-size: 0.86rem;
+  font-size: 0.85rem;
   font-weight: 800;
-  text-align: left;
 }
 
 .login-card button[type="submit"] {
   width: 100%;
-  height: 54px;
-  margin-top: 4px;
+  height: 64px;
   border: 0;
   border-radius: 16px;
   background: linear-gradient(135deg, var(--primary), var(--accent));
-  color: #ffffff;
+  color: white;
   font-size: 1rem;
   font-weight: 950;
   cursor: pointer;
-  box-shadow: 0 16px 36px var(--shadow);
-  transition: 0.22s ease;
-}
-
-.login-card button[type="submit"]:hover:not(:disabled) {
-  transform: translateY(-2px);
-}
-
-.login-card button[type="submit"]:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
 }
 
 .login-footer {
   margin-top: 22px;
   text-align: center;
   color: var(--muted);
-  font-size: 0.94rem;
 }
 
 .login-footer a {
@@ -186,37 +122,13 @@
   font-weight: 900;
   text-decoration: none;
 }
-
-.login-footer a:hover {
-  text-decoration: underline;
+.login-form {
+  display: grid;
+  gap: 22px;
 }
 
 @media (max-width: 520px) {
-  .login-page {
-    padding: 92px 14px 28px;
-    align-items: start;
-  }
-
   .login-card {
     padding: 24px;
-    border-radius: 24px;
   }
-
-  .login-card input,
-  .login-card button[type="submit"] {
-    height: 50px;
-  }
-}
-.login-form .form-group label {
-  display: block !important;
-  margin-bottom: 8px !important;
-  color: #2563eb !important;
-  font-size: 0.95rem !important;
-  font-weight: 950 !important;
-  opacity: 1 !important;
-  visibility: visible !important;
-}
-
-:root[data-theme="dark"] .login-form .form-group label {
-  color: #38bdf8 !important;
 }

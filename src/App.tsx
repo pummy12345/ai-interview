@@ -23,59 +23,49 @@ import CandidateDashboard from "./pages/CandidateDashboard";
 import UpdateProfile from "./pages/UpdateProfile";
 import AdminLogin from "./pages/AdminLogin";
 
+function AdminProtectedRoute({
+  children,
+}: {
+  children: React.ReactElement;
+}) {
+  const isAdminAuthenticated =
+    localStorage.getItem("adminLoggedIn") === "true";
+
+  if (!isAdminAuthenticated) {
+    return <Navigate to="/admin-login" replace />;
+  }
+
+  return children;
+}
+
 function AppContent() {
   const location = useLocation();
 
   const hideNavbarRoutes = ["/interview"];
-  const shouldHideNavbar =
-    hideNavbarRoutes.includes(location.pathname);
-
-  const isAdminAuthenticated =
-    localStorage.getItem("adminLoggedIn") ===
-    "true";
+  const shouldHideNavbar = hideNavbarRoutes.includes(location.pathname);
 
   return (
     <>
       {!shouldHideNavbar && <Navbar />}
 
       <Routes>
-        {/* HOME */}
         <Route path="/" element={<Home />} />
 
-        {/* ADMIN LOGIN */}
-        <Route
-          path="/admin-login"
-          element={<AdminLogin />}
-        />
+        <Route path="/login" element={<Login />} />
 
-        {/* ADMIN DASHBOARD */}
+        <Route path="/register" element={<Register />} />
+
+        <Route path="/admin-login" element={<AdminLogin />} />
+
         <Route
           path="/admin"
           element={
-            isAdminAuthenticated ? (
+            <AdminProtectedRoute>
               <AdminDashboard />
-            ) : (
-              <Navigate
-                to="/admin-login"
-                replace
-              />
-            )
+            </AdminProtectedRoute>
           }
         />
 
-        {/* CANDIDATE LOGIN */}
-        <Route
-          path="/login"
-          element={<Login />}
-        />
-
-        {/* REGISTER */}
-        <Route
-          path="/register"
-          element={<Register />}
-        />
-
-        {/* CANDIDATE DASHBOARD */}
         <Route
           path="/candidate-dashboard"
           element={
@@ -85,7 +75,6 @@ function AppContent() {
           }
         />
 
-        {/* UPDATE PROFILE */}
         <Route
           path="/update-profile"
           element={
@@ -95,7 +84,6 @@ function AppContent() {
           }
         />
 
-        {/* SKILL SELECTION */}
         <Route
           path="/skill-selection"
           element={
@@ -105,7 +93,6 @@ function AppContent() {
           }
         />
 
-        {/* INTERVIEW */}
         <Route
           path="/interview"
           element={
@@ -115,11 +102,7 @@ function AppContent() {
           }
         />
 
-        {/* FALLBACK */}
-        <Route
-          path="*"
-          element={<Navigate to="/" replace />}
-        />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>
   );

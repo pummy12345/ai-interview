@@ -18,12 +18,32 @@ const InterviewResultSchema = new mongoose.Schema(
       type: Number,
       default: 1,
     },
-
+    
     decision: {
       type: String,
       default: "Manual verification",
     },
+     answers: {
+  type: Array,
+  default: [],
+},
+
+skillMismatch: {
+  type: Boolean,
+  default: false,
+},
+
+detectedSkill: {
+  type: String,
+  default: null,
+},
+
+selectedOriginalSkill: {
+  type: String,
+  default: null,
+},
   },
+
   { timestamps: true }
 );
 
