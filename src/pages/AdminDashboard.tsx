@@ -150,8 +150,8 @@ const TEXT = {
     finalDecision: "Admin final decision",
     saveDecision: "Save decision",
     transcript: "Interview transcript",
-    viewDetails: "View details",
-    hideDetails: "Hide details",
+    viewDetails: "View Answers",
+    hideDetails: "Hide Answers",
     flags: "Flags",
     noFlags: "No flags detected",
     skillMismatch: "Skill mismatch",
@@ -1055,30 +1055,57 @@ const AdminDashboard = () => {
                             </div>
 
                             <div className="candidate-actions">
-                              <button
-                                className="contact-btn"
-                                onClick={() => {
-                                  const phone = candidate.candidate?.phone || candidate.phone;
-                                  if (phone) window.open(`tel:${phone}`);
-                                }}
-                              >
-                                📞 Call
-                              </button>
+  <button
+    className="contact-btn"
+    onClick={() => {
+      const phone =
+        candidate.candidate?.phone ||
+        candidate.phone;
 
-                              <button
-                                className="contact-btn whatsapp"
-                                onClick={() => {
-                                  const rawPhone = candidate.candidate?.phone || candidate.phone;
-                                  const phone = String(rawPhone || "").replace(/\D/g, "");
+      if (phone) {
+        window.open(`tel:${phone}`);
+      }
+    }}
+  >
+    📞 Call
+  </button>
 
-                                  if (phone) {
-                                    window.open(`https://wa.me/91${phone}`);
-                                  }
-                                }}
-                              >
-                                💬 WhatsApp
-                              </button>
-                            </div>
+  <button
+    className="contact-btn whatsapp"
+    onClick={() => {
+      const rawPhone =
+        candidate.candidate?.phone ||
+        candidate.phone;
+
+      const phone = String(
+        rawPhone || ""
+      ).replace(/\D/g, "");
+
+      if (phone) {
+        window.open(
+          `https://wa.me/91${phone}`
+        );
+      }
+    }}
+  >
+    💬 WhatsApp
+  </button>
+
+  <button
+    className="contact-btn details-btn"
+    onClick={() =>
+      setExpandedCandidateId(
+        expandedCandidateId === candidate.id
+          ? null
+          : candidate.id
+      )
+    }
+  >
+    {expandedCandidateId === candidate.id
+      ? t.hideDetails
+      : t.viewDetails}
+  </button>
+</div>
                           </div>
 
                           {isExpanded && (
